@@ -1,5 +1,7 @@
 # Thing.js
 
+[![Join the chat at https://gitter.im/CommonGarden/Thing.js](https://badges.gitter.im/CommonGarden/Thing.js.svg)](https://gitter.im/CommonGarden/Thing.js?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 A javascript library for working with things! Loosely inspired by [W3C web of things framework](https://github.com/w3c/web-of-things-framework), a thing is an object that has:
 
 * Metadata
