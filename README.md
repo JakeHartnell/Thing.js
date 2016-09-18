@@ -48,7 +48,7 @@ var Light = new Thing({
       function: function () {
         // The implementation of the action.
         console.log('light on');
-        Light.setProperty('state', 'on');
+        Light.set('state', 'on');
       }
     },
     turn_light_off: {
@@ -84,7 +84,7 @@ function start () {
   return;
 });
 
-console.log(Light.get(state));
+console.log(Light.get('state'));
 // logs 'off'
 
 Light.callAction('turn_light_on');
