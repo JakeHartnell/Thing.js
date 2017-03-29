@@ -13,7 +13,7 @@
   <body>
     <section class="page-header">
       <h1 class="project-name">Thing.js</h1>
-      <h2 class="project-tagline">Create thing objects with properties, actions, and events. Use for IoT devices or even living things like plants.</h2><a href="https://github.com/CommonGarden/Thing.js" target="_blank" class="btn">View on GitHub</a><a href="https://npmjs.com/package/Thing.js" target="_blank" class="btn">View on npm</a>
+      <h2 class="project-tagline">Create thing objects with properties, actions, and events. Use for IoT devices or even living things like plants.</h2><a href="https://github.com/CommonGarden/Thing.js" target="_blank" class="btn">View on GitHub</a><a href="https://npmjs.com/package/thing.js" target="_blank" class="btn">View on npm</a>
     </section>
     <section data-spy="scroll" data-target=".scrollspy" class="main-content">
       <div class="row">
@@ -29,6 +29,14 @@
                   <li><a href="#get"><i class="alert alert-info"></i><span>get</span></a>
                   </li>
                   <li><a href="#call"><i class="alert alert-info"></i><span>call</span></a>
+                  </li>
+                  <li><a href="#listen"><i class="alert alert-info"></i><span>listen</span></a>
+                  </li>
+                  <li><a href="#connect"><i class="alert alert-info"></i><span>connect</span></a>
+                  </li>
+                  <li><a href="#emit"><i class="alert alert-success"></i><span>emit</span></a>
+                  </li>
+                  <li><a href="#set"><i class="alert alert-success"></i><span>set</span></a>
                   </li>
                 </ul></a></li>
           </ul>
@@ -75,13 +83,20 @@
     if (!config) {
       throw new Error('Thing.js requires an config object.');
     } else {
+      this.thing = config;
       _.extend(this, config);
     }
 
-    // What would be other useful default methods?
-    if (!_.isUndefined(this.start)) {
+    if (!_.isUndefined(this.initialize)) {
+      this.initialize();
+    }
+
+    if (!_.isUndefined(this.start)){
       this.start();
     }
+    
+    // Emit 'ready' event to show that the Thing has initialized.
+    this.emit('ready');
   }</code></pre>
           <section id="set">
             <h1>set</h1>
@@ -116,7 +131,7 @@
               </tr>
             </tbody>
           </table>
-          <div class="description"><p>Update a property based on a component ID.</p></div>
+          <div class="description"><p>Update a property. Emit an event.</p></div>
           <pre><code class="language-javascript">set (key, value) {
   this.properties[key] = value;
   this.emit('property-updated', key);
@@ -165,9 +180,9 @@
             </thead>
             <tbody>
               <tr>
-                <td>key</td>
+                <td>method</td>
                 <td>String</td>
-                <td><p>The id of the action / event to call.</p></td>
+                <td><p>The method to call.</p></td>
               </tr>
               <tr>
                 <td>options</td>
@@ -176,29 +191,238 @@
               </tr>
             </tbody>
           </table>
-          <div class="description"><p>Calls a method, emits event<br />property defined. </p></div>
-          <pre><code class="language-javascript">call (key, options) {
+          <div class="description"><p>Call a method, emit event.</p></div>
+          <pre><code class="language-javascript">call (method, options) {
   try {
     if (!_.isUndefined(options)) {
-      var output = this[key](options);
+      var output = this[method](options);
     }
     else {
-      var output = this[key]();
+      var output = this[method]();
     }
-    this.emit(key, options);
 
-    // We return any returns of called functions.
     if (!_.isUndefined(output)) {
+      this.emit(method, options, output);
+      // We return any returns of called functions.
       return output;
+    } else {
+      this.emit(method, options);
     }
   }
   catch (error) {
     console.log(error);
   }
+}</code></pre>
+          <section id="listen">
+            <h1>listen</h1>
+            <h5 class="subheader"></h5>
+            <p>
+              <div class="label label-info radius ctx-type">method</div><span>&nbsp;</span><span>Thing.prototype.listen()</span><span>&nbsp;</span>
+            </p>
+          </section>
+          <div class="description"><p>Create a CoAP server (Needs work... see: <a href="https://github.com/mcollina/node-coap">https://github.com/mcollina/node-coap</a>)<br />Don&#39;t use in production yet... but do help us get it to the point where we can.</p></div>
+          <pre><code class="language-javascript">listen (options) {
+  this.server = coap.createServer((req, res)=&gt; {      
+    var urlParts = url.parse(req.url, true);
+
+    try {
+      // Remove slashes from path.
+      let method = urlParts.pathname.replace(/\//g, '');
+      
+      if (method === 'set') {
+        // should be called with a key, value query
+        let key = urlParts.query.key;
+        let value = urlParts.query.value;
+        this.set(key, value);
+        res.writeHead(200, {'Content-Type': 'application/json'});
+        res.end(JSON.stringify({key: value}));
+      }
+
+      else if (method === 'get') {
+        let key = urlParts.query.key;
+        let property = this.get(key);
+        res.writeHead(200, {'Content-Type': 'application/json'});
+        res.end(JSON.stringify({value: property}));
+      }
+
+      // emit?
+
+      else {
+        var output = this.call(method, urlParts.query);
+        res.writeHead(200, {'Content-Type': 'application/json'});
+        res.end(JSON.stringify({output}));
+      }
+    }
+
+    catch (error) {
+      console.log(error);
+      res.writeHead(404, {'Content-Type': 'text/plain'});
+      res.end(error);
+    }
+  }).listen();
+}</code></pre>
+          <section id="connect">
+            <h1>connect</h1>
+            <h5 class="subheader"></h5>
+            <p>
+              <div class="label label-info radius ctx-type">method</div><span>&nbsp;</span><span>Thing.prototype.connect()</span><span>&nbsp;</span>
+            </p>
+          </section>
+          <table class="table table-bordered table-striped">
+            <thead>
+              <tr>
+                <th style="width:20%">Option name</th>
+                <th style="width:20%">Type</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>options</td>
+                <td>Object</td>
+                <td><p>Connection options</p></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="description"><p>Connect to a CoAP server (Needs work... see: <a href="https://github.com/mcollina/node-coap">https://github.com/mcollina/node-coap</a>)<br />Don&#39;t use in production yet... but do help us get it to the point where we can.</p></div>
+          <pre><code class="language-javascript">connect (options) {
+  // Rename to subscribe?
+  let req = coap.request({
+    pathname: 'register',
+    observe: true
+  })
+  
+  req.write(JSON.stringify(this.thing));
+
+  req.on('response', (res)=&gt; {
+    // Responses are messages
+    res.pipe(process.stdout)
+  })
+
+  req.end();</code></pre>
+          <section id="emit">
+            <h1>emit</h1>
+            <h5 class="subheader"></h5>
+            <p>
+              <div class="label label-success radius ctx-type">property</div><span>&nbsp;</span><span>this.emit</span><span>&nbsp;</span>
+            </p>
+          </section>
+          <table class="table table-bordered table-striped">
+            <thead>
+              <tr>
+                <th style="width:20%">Option name</th>
+                <th style="width:20%">Type</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>event</td>
+                <td>Object</td>
+                <td><p>The event to emit</p></td>
+              </tr>
+              <tr>
+                <td>return</td>
+                <td></td>
+                <td><p>this</p></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="description"><p>Emits a timestamped event to CoAP server.</p></div>
+          <pre><code class="language-javascript">this.emit = (event) =&gt; {
+  super.emit(event);
+
+  if (typeof event === 'object') {
+    event.timestamp = new Date();
+  }
+
+  else if (typeof event === 'string') {
+    event = {
+      event,
+      timestamp: new Date()
+    }
+  }
+
+  let req = coap.request({
+    pathname: 'emit'
+  })
+  
+  req.write(JSON.stringify({
+    uuid: this.uuid,
+    token: this.token,
+    event
+  }));
+
+  req.on('response', function(res) {
+    res.pipe(process.stdout)
+  })
+
+  req.end();
+
+  return this;
+}</code></pre>
+          <section id="set">
+            <h1>set</h1>
+            <h5 class="subheader"></h5>
+            <p>
+              <div class="label label-success radius ctx-type">property</div><span>&nbsp;</span><span>this.set</span><span>&nbsp;</span>
+            </p>
+          </section>
+          <table class="table table-bordered table-striped">
+            <thead>
+              <tr>
+                <th style="width:20%">Option name</th>
+                <th style="width:20%">Type</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>key</td>
+                <td>String</td>
+                <td><p>Key of the of the property you wish to update</p></td>
+              </tr>
+              <tr>
+                <td>value</td>
+                <td>Object, List, String, Number, Boolean</td>
+                <td><p>The new value to set the property to.</p></td>
+              </tr>
+              <tr>
+                <td>return</td>
+                <td></td>
+                <td><p>this</p></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="description"><p>Update thing property on thing and CoAP server.</p></div>
+          <pre><code class="language-javascript">this.set = (key, value) =&gt; {
+  super.set(key, value);
+
+  let req = coap.request({
+    pathname: 'setProperty'
+  })
+  
+  req.write(JSON.stringify({
+    uuid: this.uuid,
+    token: this.token,
+    key: key,
+    value: value
+  }));
+
+  req.on('response', function(res) {
+    res.pipe(process.stdout)
+  })
+
+  req.end();
+
+  return this;
 }
+
+return this;
+  }
 };
 
-export default Thing;</code></pre>
+module.exports = Thing;</code></pre>
           <div class="footer site-footer">
             <div class="span site-footer-owner"><a href="https://github.com/mr-doc/mr-doc-theme-cayman">Cayman</a> is maintained by <a href="https://github.com/iwatakeshi">iwatakeshi</a>.</div>
             <div class="span site-footer-credits">This page was generated by <a href="https://github.com/mr-doc/mr-doc">Mr. Doc</a> using the <a href="https://github.com/jasonlong/cayman-theme">Cayman theme</a> by <a href="https://twitter.com/jasonlong">Jason Long</a>.</div>

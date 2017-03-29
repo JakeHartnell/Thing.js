@@ -1,5 +1,6 @@
 const Thing = require('../dist/Thing.umd');
 const _ = require('underscore');
+const coap = require('coap');
 
 global.expect = require('chai').expect;
 
@@ -27,11 +28,12 @@ global.expect = require('chai').expect;
       },
 
       acid: function (duration) {
+        // console.log('acid');
         return 'acid';
       },
           
       base: function (duration) {
-        return 'base';
+        return duration;
       },
 
       nutrient: function (duration) {
@@ -60,12 +62,12 @@ describe('Thing test', () => {
     global.testThing = new Thing(thing);
   });
 
-  it('should have cloned metadata', () => {
-    expect(testThing.token).to.equal(null);
-    expect(testThing.uuid).to.equal(null);
-  });
-
   describe('PROPERTIES', () => {
+    it('should have cloned metadata', () => {
+      expect(testThing.token).to.equal(null);
+      expect(testThing.uuid).to.equal(null);
+    });
+
     it('should get a property', () => {
       expect(testThing.get('duration')).to.equal(2000);
     });
@@ -86,10 +88,15 @@ describe('Thing test', () => {
     });
   });
 
-  describe('Methods:', () => {
+  describe('METHODS', () => {
     it('should be able to call a method.', () => {
       expect(testThing.call('acid')).to.equal('acid');
     });
+
+    it('should be able to call a method with options.', () => {
+      expect(testThing.call('base', 1000)).to.equal(1000);
+    });
+
 
     it('should emit an event when a method is called', () => {
       var event = false;
@@ -100,6 +107,30 @@ describe('Thing test', () => {
       expect(event).to.equal(true);
     });
   });
+
+  // TODO: TEST COAP
+  // describe('COAP', () => {
+  //   it('should be able to call a method over coap', () => {
+  //     var req = coap.request('coap://localhost/acid');
+
+  //     req.on('response', function(res) {
+  //       console.log(res);
+  //       res.pipe(process.stdout)
+  //     })
+
+  //     req.end()
+
+  //     // var req2 = coap.request('coap://localhost/get?key=state');
+
+  //     // req2.on('response', function(res2) {
+  //     //   res2.pipe(process.stdout)
+  //     // });
+
+  //     // req2.end();
+
+  //     // expect(false).to.equal(true);
+  //   });
+  // });
 
   afterEach(() => {
     delete global.testThing;
